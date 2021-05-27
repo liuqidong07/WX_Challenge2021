@@ -104,6 +104,7 @@ class BaseModel(nn.Module):
         main_metric = sorted(main_metric, key=lambda x: x[0], reverse=True)
         self.best_iteration = main_metric[0][1]
         self.logger.info('The best iteration is %d', self.best_iteration)
+        self._end_log()
 
     
     def _initialize_parameters(self, model, init_std=0.0001):
