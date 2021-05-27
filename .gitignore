@@ -3,3 +3,6 @@
 *.csv
 official/
 *.pkl
+__pycache__/
+log/
+save_model/
