@@ -37,7 +37,7 @@ class BaseModel(nn.Module):
         self._init_log()
 
     
-    def fit(self, data_generator):
+    def fit(self, data_generator, mode='offline'):
         model = self.train()
         self._initialize_parameters(model)  # initialize parameters in model
 
@@ -56,8 +56,6 @@ class BaseModel(nn.Module):
                                   last_epoch=-1)
        
         main_metric = []
-        t_loss, t_auc = 0, 0   # set record of loss and auc to 0 only according to i
-        i = 0
         for epoch in range(self.config.getint('Train', 'epoch')):
 
             '''load dataset for bpr or not'''
@@ -65,6 +63,8 @@ class BaseModel(nn.Module):
 
             self.logger.info('====Train Epoch: %d/%d====' % (epoch + 1, self.config.getint('Train', 'epoch')))
             train_loss, train_auc = [], []
+            i = 0
+            t_loss, t_auc = 0, 0    # clear up for each epoch
             '''train part'''
             for batch in tqdm(train_loader):
                 '''the loss for point-wise and bpr is different'''
@@ -92,18 +92,21 @@ class BaseModel(nn.Module):
                 
 
             '''validation part'''
-            self.logger.info('************** Evaluating **************')
-            uauc = self.evaluate(test_data)
-            self.writer.add_scalar('Test/uAUC', uauc, epoch+1)
-            self.logger.info('Test uAUC: %.5f' % uauc)
+            if mode == 'offline':
+                self.logger.info('************** Evaluating **************')
+                uauc = self.evaluate(test_data)
+                self.writer.add_scalar('Test/uAUC', uauc, epoch+1)
+                self.logger.info('Test uAUC: %.5f' % uauc)
+                main_metric.append((uauc, epoch+1))
             self._save_checkpoint(epoch+1)  # save checkpoint
-            main_metric.append((uauc, epoch+1))
-            #TODO:重新实现early stop
         
         '''get best iteration according to main metric on validation'''
-        main_metric = sorted(main_metric, key=lambda x: x[0], reverse=True)
-        self.best_iteration = main_metric[0][1]
-        self.logger.info('The best iteration is %d', self.best_iteration)
+        if mode == 'offline':
+            main_metric = sorted(main_metric, key=lambda x: x[0], reverse=True)
+            self.best_iteration = main_metric[0][1]
+            self.best_metric = main_metric[0][0]
+            self.logger.info('The best iteration is %d', self.best_iteration)
+        
         self._end_log()
 
     
