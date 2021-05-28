@@ -29,6 +29,25 @@ class bpr_loss(nn.Module):
         return loss
 
 
+class MT_Loss(nn.Module):
+    '''
+    Loss function for multi-task.
+    '''
+    def __init__(self, loss_type):
+        super(MT_Loss, self).__init__()
+        self.loss_type = loss_type
+
+    def forward(self, y_pred, y_true, weights):
+        loss = 0
+        for i, w in enumerate(weights):
+            if self.loss_type == 'bce':
+                criterion = nn.BCELoss()
+                y = y_true[:, i]
+                y_ = y_pred[i].squeeze()
+                loss += w * criterion(y_, y)
+        return loss
+
+
 
 
 

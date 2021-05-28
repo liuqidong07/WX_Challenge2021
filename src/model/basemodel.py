@@ -11,7 +11,6 @@
 import os
 import time
 import logging
-from torch.nn.functional import fold
 from tqdm import tqdm
 import pandas as pd
 import torch
@@ -77,17 +76,17 @@ class BaseModel(nn.Module):
                 optimizer.step()
 
                 t_loss += loss.item() / self.config.getint('Log', 'batch_record')
-                t_auc += self._compute_auc(y, y_) / self.config.getint('Log', 'batch_record')
+                #t_auc += self._compute_auc(y, y_) / self.config.getint('Log', 'batch_record')
 
                 i += 1
                 if not i % self.config.getint('Log', 'batch_record'):
                     train_loss.append(t_loss), train_auc.append(t_auc)
                     self.writer.add_scalar('Train/Loss', t_loss, 
                                             round(i/self.config.getint('Log', 'batch_record')))
-                    self.writer.add_scalar('train/AUC', t_auc, 
-                                            round(i/self.config.getint('Log', 'batch_record')))
-                    self.logger.info('Epoch %d:(%d) Train Loss: %.5f, Train AUC: %.5f' 
-                                     % (epoch+1, i, t_loss, t_auc))
+                    #self.writer.add_scalar('train/AUC', t_auc, 
+                    #                        round(i/self.config.getint('Log', 'batch_record')))
+                    self.logger.info('Epoch %d:(%d) Train Loss: %.5f' 
+                                     % (epoch+1, i, t_loss))
                     t_loss, t_auc = 0, 0
                 
 

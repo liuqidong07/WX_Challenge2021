@@ -14,7 +14,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-FRACTION = {'read_comment': 0.2, 'like': 0.2, 'click_avatar': 0.1, 'forward': 0.1}
+FRACTION = {'read_comment': 0.4, 'like': 0.4, 'click_avatar': 0.2, 'forward': 0.2}
+TARGET = ['read_comment', 'like', 'click_avatar', 'forward']
 
 class OfflineData(Dataset):
     def __init__(self, x, y):
@@ -48,6 +49,7 @@ class DataGenerator():
         self.bs = config.getint('Train', 'batch_size')
         self.num_workers = config.getint('Data', 'num_workers')
         self.target = None
+        self.multi_task = config.getboolean('Model', 'multi_task')
         #self._preprocess()
         self._load_data()
         if mode == 'offline':
@@ -97,26 +99,34 @@ class DataGenerator():
     
     def make_train_loader(self):
         '''获取训练集的loader'''
-        self.train_pos = self.train.loc[self.train[self.target]==1]
-        # 取出所有的负样本后进行采样, 然后和正样本集进行拼接
-        self.train_neg = self.train.loc[self.train[self.target]==0]
-        self.train_neg = self.train_neg.sample(frac=FRACTION[self.target])
-        self.train_sample = pd.concat([self.train_pos, self.train_neg])
-        #TODO: 在这里创建向量的时候可以加上device
-        trainset = OfflineData(torch.tensor(self.train_sample[self.features].values),
-                               torch.tensor(self.train_sample[self.target].values))
+        if self.multi_task:
+            trainset = OfflineData(torch.tensor(self.train[self.features].values), 
+                                   torch.tensor(self.train[TARGET].values))
+        else:
+            self.train_pos = self.train.loc[self.train[self.target]==1]
+            # 取出所有的负样本后进行采样, 然后和正样本集进行拼接
+            self.train_neg = self.train.loc[self.train[self.target]==0]
+            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target])
+            self.train_sample = pd.concat([self.train_pos, self.train_neg])
+            #TODO: 在这里创建向量的时候可以加上device
+            trainset = OfflineData(torch.tensor(self.train_sample[self.features].values),
+                                torch.tensor(self.train_sample[self.target].values))
         return DataLoader(trainset, 
                           batch_size=self.bs,
                           shuffle=True,
                           num_workers=self.num_workers,
-                          collate_fn=lambda x: collate_feat(x, self.features))
+                          collate_fn=lambda x: collate_feat(x, self.features, multi_task=self.multi_task))
 
 
     def make_test_loader(self):
         '''获取测试集的loader'''
         if self.mode == 'offline':
-            testdata = OfflineData(torch.tensor(self.test[self.features].values), 
-                                   torch.tensor(self.test[self.target].values))
+            if self.multi_task:
+                testdata = OfflineData(torch.tensor(self.test[self.features].values), 
+                                       torch.tensor(self.test[TARGET].values))
+            else:
+                testdata = OfflineData(torch.tensor(self.test[self.features].values), 
+                                       torch.tensor(self.test[self.target].values))
         elif self.mode == 'online':
             testdata = OnlineData(torch.tensor(self.test[self.features].values))
         return DataLoader(dataset=testdata,
@@ -125,7 +135,8 @@ class DataGenerator():
 
 
 
-def collate_feat(data, features=['user_id', 'item_id'], mode='offline'):
+def collate_feat(data, features=['user_id', 'item_id'], mode='offline', 
+                 multi_task=False):
     '''
     聚合样本, 把一个batch数据组合成字典形式
     线下数据: (bs, 2)-->(x, y)
