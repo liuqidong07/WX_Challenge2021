@@ -56,7 +56,7 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
     config.set('Model', 'multi_task', '1')
-    main(config, mode='online')    # 修改此处来切换线上和线下
+    main(config, mode='offline')    # 修改此处来切换线上和线下
 
 
 

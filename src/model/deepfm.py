@@ -11,6 +11,7 @@
 from collections import OrderedDict
 from model.basemodel import BaseModel
 from model.baseMT import BaseMT
+from utils.util import load_pretrain
 import torch
 import torch.nn as nn
 
@@ -23,14 +24,17 @@ class DeepFM(BaseModel):
         self.FMLinear = nn.ModuleDict({})
         input_size = 0
         for feat in feat_list:
-            self.FMLinear[feat.feat_name] = nn.Embedding(feat.vocabulary_size, 1)
-            self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
+            if feat.feat_name == 'item_ocr':
+                self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_pretrain())
+            else:
+                self.FMLinear[feat.feat_name] = nn.Embedding(feat.vocabulary_size, 1)
+                self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
             input_size += feat.embedding_dim
         
         self.dnn = nn.Sequential(OrderedDict([
-            ('L1', nn.Linear(input_size, 200)),
+            ('L1', nn.Linear(input_size, 400)),
             ('act1', nn.ReLU()),
-            ('L2', nn.Linear(200, 200)), 
+            ('L2', nn.Linear(400, 200)), 
             ('act2', nn.ReLU()),
             ('L3', nn.Linear(200, 1))
         ]))
@@ -42,8 +46,9 @@ class DeepFM(BaseModel):
         fmlinear = 0
         '''get embedding list'''
         for key in x.keys():
-            EMlist.append(self.EMdict[key](x[key]))
-            fmlinear += self.FMLinear[key](x[key])  # (bs, 1)
+            if key != 'item_ocr':
+                EMlist.append(self.EMdict[key](x[key]))
+                fmlinear += self.FMLinear[key](x[key])  # (bs, 1)
         
         
         '''FM'''
@@ -54,6 +59,8 @@ class DeepFM(BaseModel):
         yFM += fmlinear
 
         '''DNN'''
+        if 'item_ocr' in x.keys():
+            EMlist.append(self.EMdict['item_ocr'](x['item_ocr']))
         in_dnn = torch.cat(EMlist, dim=1)    # (bs, em_dim*feat_num)
         yDNN = self.dnn(in_dnn) # (bs, 1)
 
@@ -82,11 +89,11 @@ class DeepFM_MT(BaseMT):
 
         for _ in range(task_num):
             self.dnnList.append(nn.Sequential(OrderedDict([
-                        ('L1', nn.Linear(input_size, 200)),
+                        ('L1', nn.Linear(input_size, 400)),
                         ('act1', nn.ReLU()),
-                        ('L2', nn.Linear(200, 200)), 
+                        ('L2', nn.Linear(400, 400)), 
                         ('act2', nn.ReLU()),
-                        ('L3', nn.Linear(200, 1))
+                        ('L3', nn.Linear(400, 1))
             ])))
 
             self.outList.append(nn.Sigmoid())

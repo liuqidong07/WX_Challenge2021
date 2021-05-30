@@ -48,7 +48,9 @@ class BaseModel(nn.Module):
         optim_ = selection.select_optimizer(self.config.get('Train', 'optimizer'))
         schedule_ = selection.select_schedule(self.config.get('Train', 'scheduler'))
         
-        optimizer = optim_(params=model.parameters(), lr=self.config.getfloat('Train', 'lr'))
+        optimizer = optim_(params=model.parameters(), 
+                           lr=self.config.getfloat('Train', 'lr'),
+                           weight_decay=self.config.getfloat('Train', 'l2'))
         if schedule_ is not None:
             scheduler = schedule_(optimizer, 
                                   gamma=self.config.getfloat('Train', 'lr_decay'), 
@@ -133,6 +135,7 @@ class BaseModel(nn.Module):
         Initialize the logging module. Concretely, initialize the
         tensorboard and logging
         '''
+        #TODO: 命令行里输出重要的超参数
         # judge whether the folder exits
         if not os.path.exists(r'./log/text/' + self.config['Model']['model'] + '/'):
             os.makedirs(r'./log/text/' + self.config['Model']['model'] + '/')

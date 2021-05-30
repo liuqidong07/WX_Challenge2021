@@ -20,7 +20,7 @@ import pickle
 
 
 TARGETS = ['read_comment', 'like', 'click_avatar', 'forward']
-BEST_EPOCH = {'read_comment': 2, 'like': 1, 'click_avatar': 1, 'forward': 1}
+BEST_EPOCH = {'read_comment': 5, 'like': 6, 'click_avatar': 6, 'forward': 4}
 mode = 'online'
 
 def submit(config):

@@ -24,7 +24,7 @@ def main(config, mode='offline'):
     v_dim = config.getint(m_section, 'embedding_dim')
 
     '''载入数据, 管理特征, 构建数据生成器'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'device']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'device', 'item_ocr']
     data_generator = DataGenerator(config, mode=mode, features=features)
     
     # 记录最好的结果和训练轮次
@@ -37,7 +37,11 @@ def main(config, mode='offline'):
         
         # 构建输入特征列表
         voca_dict = data_generator.get_feature_info()
+        if 'item_ocr' in features:
+            features.remove('item_ocr')
         feat_list = [sparseFeat(feat, voca_dict[feat], v_dim) for feat in features]
+        if 'item_ocr' in features:
+            feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr'], 512))
     
         model = select_model(m_section)(config, feat_list)
         if config.getboolean('Device', 'cuda'):
