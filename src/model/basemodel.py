@@ -48,7 +48,7 @@ class BaseModel(nn.Module):
         optim_ = selection.select_optimizer(self.config.get('Train', 'optimizer'))
         schedule_ = selection.select_schedule(self.config.get('Train', 'scheduler'))
         
-        optimizer = optim_(params=model.parameters(), 
+        optimizer = optim_(params=filter(lambda x: x.requires_grad, model.parameters()), 
                            lr=self.config.getfloat('Train', 'lr'),
                            weight_decay=self.config.getfloat('Train', 'l2'))
         if schedule_ is not None:
@@ -164,16 +164,20 @@ class BaseModel(nn.Module):
 
             # record the hyper parameters in the text
             self.logger.info('learning rate: ' + str(self.config.get('Train', 'lr')))
-            self.logger.info('learning rate decay: ' + str(self.config.get('Train', 'lr_decay')))
             self.logger.info('batch size: ' + str(self.config.get('Train', 'batch_size')))
+            self.logger.info('embedding dimension: ' + str(self.config.get(self.config['Model']['model'], 'embedding_dim')))
+            self.logger.info('L2 regularization: ' + str(self.config.get('Train', 'l2')))
+            self.logger.info('learning rate decay: ' + str(self.config.get('Train', 'lr_decay')))
             self.logger.info('optimizer: ' + str(self.config.get('Train', 'optimizer')))
             self.logger.info('scheduler: ' + str(self.config.get('Train', 'scheduler')))
+
             
         #create console handler
         self.ch = logging.StreamHandler()
         self.ch.setLevel(logging.DEBUG)
         self.logger.addHandler(self.ch)
 
+        
 
     def _end_log(self):
         '''

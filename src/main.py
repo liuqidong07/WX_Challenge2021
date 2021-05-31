@@ -15,6 +15,7 @@ from utils.selection import *
 from layers.input import sparseFeat
 from generator import DataGenerator
 import setproctitle
+import json
 
 TARGETS = ['read_comment', 'like', 'click_avatar', 'forward']
 WEIGHTS = {'read_comment': 4, 'like': 3, 'click_avatar': 2, 'forward': 1}
@@ -27,6 +28,12 @@ def main(config, mode='offline'):
     features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'device', 'item_ocr']
     data_generator = DataGenerator(config, mode=mode, features=features)
     
+    '''输出关键超参数'''
+    print('learning rate: ' + str(config.get('Train', 'lr')))
+    print('batch size: ' + str(config.get('Train', 'batch_size')))
+    print('embedding dimension: ' + str(config.get(self.config['Model']['model'], 'embedding_dim')))
+    print('L2 regularization: ' + str(config.get('Train', 'l2')))
+
     # 记录最好的结果和训练轮次
     metric = {}
     iteration = {}
@@ -66,8 +73,33 @@ def main(config, mode='offline'):
         print('The best iteration of each target is' + str(iteration))
         print('The best uAUC of each target is' + str(metric))
         print('The weighted uAUC is: %.5f' % uAUC)
+
+        res_dict = {}
+        res_dict['iteration'] = iteration
+        res_dict['metric'] = metric
+        res_dict['uAUC'] = uAUC
+        to_json(config, res_dict)
     
     print('Mission Complete!')
+
+    return uAUC
+
+
+def to_json(config, res_dict):
+    params = {'lr': config.getfloat('Train', 'lr'),
+              'bs': config.getint('Train', 'batch_size'),
+              'embedding_dim': config.getint(config['Model']['model'], 'embedding_dim'),
+              'l2': config.getfloat('Train', 'l2'),
+              'optimizer': config.get('Train', 'optimizer')}
+    res_dict['params'] = params
+    file_name = './log/json/lr' + config.get('Train', 'lr') + \
+                '_bs' + config.get('Train', 'batch_size') + \
+                '_em' + config.get(config['Model']['model'], 'embedding_dim') + \
+                '_l2' + config.get('Train', 'l2') + '.json'
+    with open(file_name, 'w') as f:
+        json.dump(res_dict, f)
+
+
 
 
 if __name__ == '__main__':

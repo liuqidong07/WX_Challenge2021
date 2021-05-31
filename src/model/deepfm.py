@@ -26,15 +26,16 @@ class DeepFM(BaseModel):
         for feat in feat_list:
             if feat.feat_name == 'item_ocr':
                 self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_pretrain())
+                self.EMdict[feat.feat_name].requires_grad = False
             else:
                 self.FMLinear[feat.feat_name] = nn.Embedding(feat.vocabulary_size, 1)
                 self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
             input_size += feat.embedding_dim
         
         self.dnn = nn.Sequential(OrderedDict([
-            ('L1', nn.Linear(input_size, 400)),
+            ('L1', nn.Linear(input_size, 200)),
             ('act1', nn.ReLU()),
-            ('L2', nn.Linear(400, 200)), 
+            ('L2', nn.Linear(200, 200)), 
             ('act2', nn.ReLU()),
             ('L3', nn.Linear(200, 1))
         ]))
