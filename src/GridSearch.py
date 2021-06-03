@@ -8,7 +8,7 @@
 '''
 
 # here put the import lib
-from src.main import main
+from main import main
 import setproctitle
 import configparser
 
@@ -18,8 +18,8 @@ def grid_search():
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
 
-    lr_range = [0.001, 0.0005, 0.0001]
-    bs_range = [32, 128, 512, 1028]
+    lr_range = [0.0001]
+    bs_range = [128, 512, 1024]
     em_range = [32, 128]
 
     best = 0
