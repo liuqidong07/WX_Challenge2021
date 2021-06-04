@@ -11,6 +11,7 @@
 import configparser
 
 from utils.selection import *
+from utils.util import set_seed
 from layers.input import sparseFeat
 from generator import DataGenerator
 import setproctitle
@@ -22,9 +23,11 @@ WEIGHTS = {'read_comment': 4, 'like': 3, 'click_avatar': 2, 'forward': 1}
 def main(config, mode='offline'):
     m_section = config['Model']['model']
     v_dim = config.getint(m_section, 'embedding_dim')
+    seed = config.getint('Train', 'seed')
+    set_seed(seed)
 
     '''载入数据, 管理特征, 构建数据生成器'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr']
     data_generator = DataGenerator(config, mode=mode, features=features)
     
     '''输出关键超参数'''
@@ -43,12 +46,13 @@ def main(config, mode='offline'):
         
         # 构建输入特征列表
         voca_dict = data_generator.get_feature_info()
-        if 'item_ocr' in features:
-            features.remove('item_ocr')
-        feat_list = [sparseFeat(feat, voca_dict[feat], v_dim) for feat in features]
-        if 'item_ocr' in features:
-            feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr']))
-    
+        feat_list = []
+        for feat in features:
+            if feat == 'item_ocr':
+                feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr'], 32))
+            else:
+                feat_list.append(sparseFeat(feat, voca_dict[feat], v_dim))
+
         model = select_model(m_section)(config, feat_list)
         if config.getboolean('Device', 'cuda'):
             model.to('cuda:' + config.get('Device', 'device_tab'))
@@ -108,7 +112,7 @@ if __name__ == '__main__':
     setproctitle.setproctitle("Qidong's Competition")
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
-    main(config, mode='offline')    # 修改此处来切换线上和线下
+    main(config, mode='online')    # 修改此处来切换线上和线下
 
 
 

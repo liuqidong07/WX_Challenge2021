@@ -54,6 +54,8 @@ class DataGenerator():
         self._load_data()
         if mode == 'offline':
             self._split_data()
+        self.seed = config.getint('Train', 'seed')
+        self.pretrain = config.getboolean('Model', 'pretrain')
 
 
     def _load_data(self):
@@ -106,11 +108,23 @@ class DataGenerator():
             self.train_pos = self.train.loc[self.train[self.target]==1]
             # 取出所有的负样本后进行采样, 然后和正样本集进行拼接
             self.train_neg = self.train.loc[self.train[self.target]==0]
-            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target])
+            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target], random_state=self.seed)
             self.train_sample = pd.concat([self.train_pos, self.train_neg])
             #TODO: 在这里创建向量的时候可以加上device
             trainset = OfflineData(torch.tensor(self.train_sample[self.features].values),
                                 torch.tensor(self.train_sample[self.target].values))
+
+        if self.pretrain:
+            '''将所有目标的正样本作为正样本进行预训练'''
+            label = self.train['read_comment']
+            label = 0
+            for target in TARGET:
+                label += self.train[target]
+            # 把所有目标有1的赋为1. 否则会出现大于1的
+            label.loc[label>0] = 1
+            trainset = OfflineData(torch.tensor(self.train[self.features].values), 
+                                   torch.tensor(label.values))
+
         return DataLoader(trainset, 
                           batch_size=self.bs,
                           shuffle=True,
@@ -129,8 +143,45 @@ class DataGenerator():
                                        torch.tensor(self.test[self.target].values))
         elif self.mode == 'online':
             testdata = OnlineData(torch.tensor(self.test[self.features].values))
+        
+        if self.pretrain:
+            '''构建预训练任务的测试集'''
+            label = self.test['read_comment']
+            label = 0
+            for target in TARGET:
+                label += self.test[target]
+            label.loc[label>0] = 1
+            testdata = OfflineData(torch.tensor(self.test[self.features].values), 
+                                  torch.tensor(label.values))
+
         return DataLoader(dataset=testdata,
                           batch_size=testdata.__len__(),
+                          collate_fn=lambda x: collate_feat(x, self.features, self.mode))
+
+
+    def make_pretrain_loader(self):
+        '''将所有目标的正样本作为正样本进行预训练'''
+        label = None
+        for target in TARGET:
+            label += self.train[target]
+        pretraindata = OfflineData(torch.tensor(self.train[self.features].values), 
+                                   torch.tensor(label.values))
+        return DataLoader(pretraindata, 
+                          batch_size=self.bs,
+                          shuffle=True,
+                          num_workers=self.num_workers,
+                          collate_fn=lambda x: collate_feat(x, self.features))
+    
+
+    def make_pretest_loader(self):
+        '''构建预训练任务的测试集'''
+        label = None
+        for target in TARGET:
+            label += self.train[target]
+        pretraintest = OfflineData(torch.tensor(self.train[self.features].values), 
+                                   torch.tensor(label.values))
+        return DataLoader(dataset=pretraintest,
+                          batch_size=pretraintest.__len__(),
                           collate_fn=lambda x: collate_feat(x, self.features, self.mode))
 
 

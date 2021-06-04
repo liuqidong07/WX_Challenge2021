@@ -30,14 +30,18 @@ class DeepFM(BaseModel):
             else:
                 self.FMLinear[feat.feat_name] = nn.Embedding(feat.vocabulary_size, 1)
                 self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
+                nn.init.normal_(self.FMLinear[feat.feat_name].weight, mean=0.0, std=0.0001)
+                nn.init.normal_(self.EMdict[feat.feat_name].weight, mean=0.0, std=0.0001)
             input_size += feat.embedding_dim
         
         self.dnn = nn.Sequential(OrderedDict([
             ('L1', nn.Linear(input_size, 200)),
+            #('BN1', nn.BatchNorm1d(200, momentum=0.5)),
             ('act1', nn.ReLU()),
             ('L2', nn.Linear(200, 200)), 
+            #('BN1', nn.BatchNorm1d(200, momentum=0.5)),
             ('act2', nn.ReLU()),
-            ('L3', nn.Linear(200, 1))
+            ('L3', nn.Linear(200, 1, bias=False))
         ]))
         
         self.out = nn.Sigmoid()

@@ -38,7 +38,7 @@ class BaseModel(nn.Module):
     
     def fit(self, data_generator, mode='offline'):
         model = self.train()
-        self._initialize_parameters(model)  # initialize parameters in model
+        #self._initialize_parameters(model)  # initialize parameters in model
 
         self.logger.info('************** Training **************')
         
@@ -117,6 +117,7 @@ class BaseModel(nn.Module):
         of layer.
         '''
         for m in model.modules():
+            #TODO: 是不是之前连着加载进来的embedding也一起初始化了
             if isinstance(m, nn.Embedding):
                 nn.init.normal_(m.weight, mean=0.0, std=init_std)
             #if isinstance(m, nn.Linear):
