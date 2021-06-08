@@ -25,7 +25,7 @@ class BaseModel(nn.Module):
     The BaseModel of all of models.
 
     '''
-    def __init__(self, config, loss='bce', best_iteration=0) -> None:
+    def __init__(self, config, loss='bce', best_iteration=0, pretrain=False) -> None:
         super().__init__()
         
         self.config = config
@@ -33,7 +33,8 @@ class BaseModel(nn.Module):
         self.best_iteration = best_iteration     # the iteration is used for test 
         self.metrics = {}
         #TODO: 日志模块进行修改
-        self._init_log()
+        if not pretrain:
+            self._init_log()
 
     
     def fit(self, data_generator, mode='offline'):

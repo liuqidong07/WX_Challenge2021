@@ -11,21 +11,21 @@
 from collections import OrderedDict
 from model.basemodel import BaseModel
 from model.baseMT import BaseMT
-from utils.util import load_pretrain
+from utils.util import load_pretrain, load_ocr
 import torch
 import torch.nn as nn
 
 
 class DeepFM(BaseModel):
-    def __init__(self, config, feat_list):
-        super(DeepFM, self).__init__(config)
+    def __init__(self, config, feat_list, pretrain=False):
+        super(DeepFM, self).__init__(config, pretrain=pretrain)
         
         self.EMdict = nn.ModuleDict({})
         self.FMLinear = nn.ModuleDict({})
         input_size = 0
         for feat in feat_list:
             if feat.feat_name == 'item_ocr':
-                self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_pretrain())
+                self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_ocr())
                 self.EMdict[feat.feat_name].requires_grad = False
             else:
                 self.FMLinear[feat.feat_name] = nn.Embedding(feat.vocabulary_size, 1)

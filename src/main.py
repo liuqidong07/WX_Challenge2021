@@ -11,7 +11,7 @@
 import configparser
 
 from utils.selection import *
-from utils.util import set_seed
+from utils.util import set_seed, load_pretrain
 from layers.input import sparseFeat
 from generator import DataGenerator
 import setproctitle
@@ -45,7 +45,7 @@ def main(config, mode='offline'):
         config.set('Model', 'target', target)
         
         # 构建输入特征列表
-        voca_dict = data_generator.get_feature_info()
+        voca_dict = data_generator.feature_info
         feat_list = []
         for feat in features:
             if feat == 'item_ocr':
@@ -54,6 +54,12 @@ def main(config, mode='offline'):
                 feat_list.append(sparseFeat(feat, voca_dict[feat], v_dim))
 
         model = select_model(m_section)(config, feat_list)
+
+        '''加载预训练模型'''
+        if config.getboolean('Model', 'load_pretrain'):
+            pretrain_model = select_model(m_section)(config, feat_list, pretrain=True)
+            model = load_pretrain(model, pretrain_model, './save_model/pretrain/pretrain.ckpt')
+
         if config.getboolean('Device', 'cuda'):
             model.to('cuda:' + config.get('Device', 'device_tab'))
         data_generator.target = target  # 设置生成器的目标

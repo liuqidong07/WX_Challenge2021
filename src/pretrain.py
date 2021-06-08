@@ -15,6 +15,7 @@ from utils.util import set_seed
 from layers.input import sparseFeat
 from generator import DataGenerator
 import setproctitle
+import torch
 
 
 def pretrain(config, mode='offline'):
@@ -24,7 +25,7 @@ def pretrain(config, mode='offline'):
     set_seed(seed)
 
     '''载入数据, 管理特征, 构建数据生成器'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_seconds']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr']
     data_generator = DataGenerator(config, mode=mode, features=features)
     
     '''输出关键超参数'''
@@ -40,27 +41,35 @@ def pretrain(config, mode='offline'):
     config.set('Model', 'target', 'pretrain')
         
     # 构建输入特征列表
-    voca_dict = data_generator.get_feature_info()
-    if 'item_ocr' in features:
-        features.remove('item_ocr')
-    feat_list = [sparseFeat(feat, voca_dict[feat], v_dim) for feat in features]
-    if 'item_ocr' in features:
-        feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr']))
-    
+    voca_dict = data_generator.feature_info
+    feat_list = []
+    for feat in features:
+            if feat == 'item_ocr':
+                feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr'], 32))
+            else:
+                feat_list.append(sparseFeat(feat, voca_dict[feat], v_dim))
+
     model = select_model(m_section)(config, feat_list)
     if config.getboolean('Device', 'cuda'):
         model.to('cuda:' + config.get('Device', 'device_tab'))
     data_generator.target = 'read_comment'  # 设置生成器的目标
     model.fit(data_generator, mode)
 
-    model.save_best_model()
-    metric = model.best_metric
-    iteration = model.best_iteration
 
-    print('The best iteration of pretrain is %d' % iteration)
-    print('The pretrain uAUC is: %.5f' % metric)
+    if mode == 'offline':
+        model.save_best_model()
+        metric = model.best_metric
+        iteration = model.best_iteration
 
-    return metric
+        #folder_path = r'./save_model/' + config.get('Model', 'target') + '/'
+        #model.load_state_dict(torch.load(folder_path + config.get('Model', 'target') + '.ckpt'))
+        #torch.save(model, folder_path + 'pretrain.model')
+
+
+        print('The best iteration of pretrain is %d' % iteration)
+        print('The pretrain uAUC is: %.5f' % metric)
+
+        return metric
     
 
 
@@ -68,7 +77,8 @@ if __name__ == '__main__':
     setproctitle.setproctitle("Qidong's Competition")
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
-    pretrain(config, mode='offline')    # 修改此处来切换线上和线下
+    config.set('Model', 'pretrain', '1')
+    pretrain(config, mode='online')    # 修改此处来切换线上和线下
 
 
 

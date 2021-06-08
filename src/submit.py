@@ -37,7 +37,7 @@ def submit(config):
         print('\n' + 'Start: ' + target)
         config.set('Model', 'target', target)
         data_generator = DataGenerator(config, mode=mode, features=features)
-        voca_dict = data_generator.get_feature_info()
+        voca_dict = data_generator.feature_info
         feat_list = []
         for feat in features:
             if feat == 'item_ocr':

@@ -14,7 +14,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-FRACTION = {'read_comment': 0.4, 'like': 0.4, 'click_avatar': 0.2, 'forward': 0.2}
+# 0.4, 0.4, 0.2, 0.2
+FRACTION = {'read_comment': 0.4, 'like': 0.33, 'click_avatar': 0.33, 'forward': 0.2}
 TARGET = ['read_comment', 'like', 'click_avatar', 'forward']
 
 class OfflineData(Dataset):
@@ -52,6 +53,7 @@ class DataGenerator():
         self.multi_task = config.getboolean('Model', 'multi_task')
         #self._preprocess()
         self._load_data()
+        self.feature_info = self.get_feature_info()
         if mode == 'offline':
             self._split_data()
         self.seed = config.getint('Train', 'seed')
@@ -145,14 +147,17 @@ class DataGenerator():
             testdata = OnlineData(torch.tensor(self.test[self.features].values))
         
         if self.pretrain:
-            '''构建预训练任务的测试集'''
-            label = self.test['read_comment']
-            label = 0
-            for target in TARGET:
-                label += self.test[target]
-            label.loc[label>0] = 1
-            testdata = OfflineData(torch.tensor(self.test[self.features].values), 
-                                  torch.tensor(label.values))
+            if self.mode == 'offline':
+                '''构建预训练任务的测试集'''
+                label = self.test['read_comment']
+                label = 0
+                for target in TARGET:
+                    label += self.test[target]
+                label.loc[label>0] = 1
+                testdata = OfflineData(torch.tensor(self.test[self.features].values), 
+                                       torch.tensor(label.values))
+            else:
+                testdata = OnlineData(torch.tensor(self.test[self.features].values))
 
         return DataLoader(dataset=testdata,
                           batch_size=testdata.__len__(),
