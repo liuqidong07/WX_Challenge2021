@@ -78,7 +78,7 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
     config.set('Model', 'pretrain', '1')
-    pretrain(config, mode='online')    # 修改此处来切换线上和线下
+    pretrain(config, mode='offline')    # 修改此处来切换线上和线下
 
 
 

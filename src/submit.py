@@ -29,7 +29,7 @@ def submit(config):
     v_dim = config.getint(m_section, 'embedding_dim')
 
     '''载入数据, 管理特征'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr', 'item_seconds']
     
     df = {}
     '''对每个目标训练一个模型'''
@@ -60,6 +60,7 @@ def submit(config):
             x = model._move_device(batch)
         y = model(x)
         y = y.squeeze()
+        model._end_log()    # 把handler进行清空
 
         df[target] = y.to('cpu').detach().tolist()
         print(target + ' is completed !')
@@ -71,7 +72,7 @@ def submit(config):
     df = df.reset_index(drop=True)
     df = transform(df)
     now_str = time.strftime("%m%d-%H%M", time.localtime())
-    df.to_csv('./submit/' + now_str + '.csv', index=False)
+    df.to_csv('./submit/' + config.get('Train', 'seed') + '.csv', index=False)
 
 
 

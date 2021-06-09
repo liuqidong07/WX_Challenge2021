@@ -27,7 +27,7 @@ def main(config, mode='offline'):
     set_seed(seed)
 
     '''载入数据, 管理特征, 构建数据生成器'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr', 'item_seconds']
     data_generator = DataGenerator(config, mode=mode, features=features)
     
     '''输出关键超参数'''
