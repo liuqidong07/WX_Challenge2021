@@ -118,7 +118,7 @@ if __name__ == '__main__':
     setproctitle.setproctitle("Qidong's Competition")
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
-    main(config, mode='online')    # 修改此处来切换线上和线下
+    main(config, mode='offline')    # 修改此处来切换线上和线下
 
 
 

@@ -110,7 +110,7 @@ class DataGenerator():
             self.train_pos = self.train.loc[self.train[self.target]==1]
             # 取出所有的负样本后进行采样, 然后和正样本集进行拼接
             self.train_neg = self.train.loc[self.train[self.target]==0]
-            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target], random_state=self.seed)
+            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target], random_state=self.seed, weights='stay')
             self.train_sample = pd.concat([self.train_pos, self.train_neg])
             #TODO: 在这里创建向量的时候可以加上device
             trainset = OfflineData(torch.tensor(self.train_sample[self.features].values),
@@ -159,8 +159,10 @@ class DataGenerator():
             else:
                 testdata = OnlineData(torch.tensor(self.test[self.features].values))
 
+        bs = min(10000, testdata.__len__())
+
         return DataLoader(dataset=testdata,
-                          batch_size=testdata.__len__(),
+                          batch_size=bs,
                           collate_fn=lambda x: collate_feat(x, self.features, self.mode))
 
 

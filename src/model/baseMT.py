@@ -21,7 +21,7 @@ from layers import _loss
 from sklearn.metrics import roc_auc_score
 
 
-WEIGHTS = [0.4, 0.3, 0.2, 0.1]
+WEIGHTS = {'read_commet': 0.4, 'like': 0.3, 'click_avatar': 0.2, 'forward': 0.1}
 MultiWeights = [0.3, 0.2, 0.4, 0.2]
 
 
@@ -101,9 +101,9 @@ class BaseMT(nn.Module):
             '''validation part'''
             if mode == 'offline':
                 self.logger.info('************** Evaluating **************')
-                uauc, uauc_list = self.evaluate(test_data)
+                uauc, uauc_dict = self.evaluate(test_data)
                 self.writer.add_scalar('Test/uAUC', uauc, epoch+1)
-                self.logger.info('uAUC for each target: ' + str(uauc_list))
+                self.logger.info('uAUC for each target: ' + str(uauc_dict))
                 self.logger.info('Test uAUC: %.5f' % uauc)
                 main_metric.append((uauc, epoch+1))
             self._save_checkpoint(epoch+1)  # save checkpoint
@@ -229,20 +229,33 @@ class BaseMT(nn.Module):
 
     def evaluate(self, testloader):
         model = self.eval()
-        for batch in testloader:
-            x, y = self._move_device(batch[0]), batch[1]
-        y_ = model(x)
-        y = y.to('cpu').squeeze().detach().numpy()
-        user = x['user_id'].to('cpu').squeeze().detach().tolist()
+        user, pred, true = [], [], []
+        for batch in tqdm(testloader):
+            with torch.no_grad():
+                x, y = self._move_device(batch[0]), batch[1]
+                y_ = model(x)
+                # 拼接不同目标的预测向量
+                y_ = torch.cat(y_, dim=1)
+
+                user.append(x['user_id'])
+                pred.append(y_)
+                true.append(y)
+        
+        # 将不同batch的向量拼接起来
+        user = torch.cat(user, dim=0)
+        pred = torch.cat(pred, dim=0)
+        true = torch.cat(true, dim=0)
+        pred = pred.to('cpu').squeeze().detach().numpy()
+        true = true.to('cpu').squeeze().detach().numpy()
+        user = user.to('cpu').squeeze().detach().tolist()
 
         uauc = 0
-        uauc_list = []
-        for i, w in enumerate(WEIGHTS):
-            pred = y_[i].to('cpu').squeeze().detach().numpy()
+        uauc_dict = {}
+        for i, key in enumerate(WEIGHTS.keys()):
             eval_df = pd.DataFrame({
                 'user_id': user,
-                'pred': pred,
-                'true': y[:, i]
+                'pred': pred[:, i],
+                'true': true[:, i]
             })
 
             def get_auc(x):
@@ -257,9 +270,9 @@ class BaseMT(nn.Module):
                                         'flag': [0]})
             eval_df = eval_df.groupby('user_id').apply(get_auc)
             eval_df = eval_df.loc[eval_df['flag']==1]
-            uauc += w * eval_df['auc'].mean()
-            uauc_list.append(eval_df['auc'].mean())
-        return uauc, uauc_list
+            uauc += WEIGHTS[key] * eval_df['auc'].mean()
+            uauc_dict[key] = eval_df['auc'].mean()
+        return uauc, uauc_dict
 
     
     def _compute_auc(self, true, pred):

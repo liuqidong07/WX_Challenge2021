@@ -13,6 +13,7 @@ from utils.selection import *
 from layers.input import sparseFeat
 from generator import DataGenerator
 from model.deepfm import DeepFM_MT
+from model.mmoe import MMOE
 import setproctitle
 import torch
 import pandas as pd
@@ -30,16 +31,29 @@ def submit(config):
     v_dim = config.getint(m_section, 'embedding_dim')
 
     '''载入数据, 管理特征'''
-    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'device']
+    features = ['user_id', 'item_id', 'author_id', 'item_song', 'item_singer', 'item_ocr', 'item_seconds']
     
     df = {}
     '''对每个目标训练一个模型'''
     print('\n' + 'Start: ')
     data_generator = DataGenerator(config, mode=mode, features=features)
-    voca_dict = data_generator.get_feature_info()
-    feat_list = [sparseFeat(feat, voca_dict[feat], v_dim) for feat in features]
+
+     # 构建输入特征列表
+    voca_dict = data_generator.feature_info
+    feat_list = []
+    for feat in features:
+        if feat == 'item_ocr':
+            feat_list.append(sparseFeat('item_ocr', voca_dict['item_ocr'], 32))
+        else:
+            feat_list.append(sparseFeat(feat, voca_dict[feat], v_dim))
     
-    model = DeepFM_MT(config, feat_list)
+    if config['Model']['model'].lower() == 'deepfm':
+        model = DeepFM_MT(config, feat_list)
+    elif config['Model']['model'].lower() == 'mmoe':
+        model = MMOE(config, feat_list, task_num=4, expert_num=8)
+    else:
+        raise NotImplementedError
+
     # 加载模型参数
     # TODO: 暂时全部使用第一个epoch训练出的模型
     model.load_state_dict(torch.load(model_folder  + 'epoch_1.ckpt'))
@@ -47,16 +61,32 @@ def submit(config):
         model.to('cuda:' + config.get('Device', 'device_tab'))
         
     test_loader = data_generator.make_test_loader()
+    user, item, pred = [], [], []
     for batch in test_loader:
-        x = model._move_device(batch)
-    y = model(x)
+        with torch.no_grad():
+            x = model._move_device(batch)
+            y = model(x)
+            y = torch.cat(y, dim=1)
+            pred.append(y)
+            user.append(x['user_id'])
+            item.append(x['item_id'])
+
+    user = torch.cat(user, dim=0)
+    item = torch.cat(item, dim=0)
+    pred = torch.cat(pred, dim=0)
     
+    pred = pred.to('cpu').squeeze().detach().numpy()
+    item = item.to('cpu').squeeze().detach().numpy()
+    user = user.to('cpu').squeeze().detach().numpy()
+
     for i, target in enumerate(TARGETS):
-        df[target] = y[i].squeeze().to('cpu').detach().tolist()
+        df[target] = pred[:, i]
     print('Prediction is completed !')
 
-    df['user_id'] = x['user_id'].to('cpu').detach().tolist()
-    df['item_id'] = x['item_id'].to('cpu').detach().tolist()
+    #df['user_id'] = x['user_id'].to('cpu').detach().tolist()
+    #df['item_id'] = x['item_id'].to('cpu').detach().tolist()
+    df['user_id'] = user
+    df['item_id'] = item
     df = pd.DataFrame(df)
     df = df[['user_id', 'item_id'] + TARGETS]
     df = df.reset_index(drop=True)
