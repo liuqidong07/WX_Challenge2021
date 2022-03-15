@@ -39,7 +39,7 @@ def main(config, mode='offline'):
             feat_list.append(sparseFeat(feat, voca_dict[feat], v_dim))
     
     if config['Model']['model'].lower() == 'deepfm':
-        model = DeepFM_MT(config, feat_list)
+        model = DeepFM_MT(config, feat_list, task_num=4)
     elif config['Model']['model'].lower() == 'mmoe':
         model = MMOE(config, feat_list, task_num=4, expert_num=8)
     else:
@@ -57,7 +57,7 @@ def main(config, mode='offline'):
 
     if mode == 'offline':
 
-        print('The best iteration is' + str(iteration))
+        print('The best iteration is ' + str(iteration))
         print('The weighted uAUC is: %.5f' % metric)
     
     print('Mission Complete!')
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
     config.set('Model', 'multi_task', '1')
-    main(config, mode='online')    # 修改此处来切换线上和线下
+    main(config, mode='offline')    # 修改此处来切换线上和线下
 
 
 

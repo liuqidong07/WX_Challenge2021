@@ -1,8 +1,70 @@
-初赛数据介绍
-1. user_action.csv: 用户行为表
-2. feed_info.csv: Feed信息表
-3. feed_embeddings.csv: Feed向量表
-4. test_a.csv: A榜测试集
-5. submit_demo_初赛a.csv: A榜提交结果demo
+# [WeChat Big Data Challenge](https://tech.yidianzixun.com/competition/#/) Program Share (178/1614)
 
-Baseline: https://github.com/WeChat-Big-Data-Challenge-2021/WeChat_Big_Data_Challenge.git
+**Team: 田老师我不会**
+
+## Idea
+
+1. **Base Model--DeepFM**
+2. **The number of negative samples is far more than positive samples: like(4%), click_avatar(0.7%), forward(0.3%), comment(0.04%)**
+   * **Sample negative according to ratio--only for single model**
+   * **Sample negative according to play time**
+3. **Four targets has a certain extent correlations--MMOE**
+4. **Whether complete a video reflect users’ preference--Add a task to indicate whether a user complete a video.**
+
+## Code Structure
+
+```
+ ├── data # Data Preprocessing Module
+ │   ├── DA.ipynb 
+ │   ├── preprocess.ipynb # Data preprocessing code
+ ├── submit# save results
+ ├── generator.py # DataSet class for single task
+ ├── Grid_Search.py  # grid search hyper-parameters
+ ├── log # Log Module
+ │   ├── tensorboard
+ │   └── text
+ ├── mainMT.py  # Main function of ESMM
+ ├── main.py # Main Function of single task
+ ├── submitMT.py  # predict and generate submission for multi-task
+ ├── submit.py # predict and generate submission
+ ├── README.md
+ ├── config.ini# arguments for training
+ ├── run.bash # run script
+ ├── submission
+ │   ├── average.ipynb # average n runs 
+ └──  src
+ ├── models # Model Module
+ │   ├── basemodel.py # Base model
+ │   ├── baseMT.py# Multi-task Base model
+ │   ├── deepfm.py# DeepFM Model
+ │   └── mmoe.py  # MMOE model
+ └── utils # Tools
+     ├── evaluation.py
+     ├── selection.py
+     └── utils.py
+```
+
+## Run
+
+1. Unzip all dataset and move to `\data\`. Then, run preprocess.ipynb.
+2. **Train model**
+
+```
+ bash run.bash
+```
+
+**All arguments are defined in mainMT.py。**
+**The optimal group of hyper-parameters is:**
+
+```
+ batch_size=2048
+ learning_rate=0.001
+ epoch=1
+ embedding_size=32
+```
+
+## Environments
+
+```
+ pip install -r requirements.txt
+```

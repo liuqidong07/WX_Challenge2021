@@ -8,8 +8,10 @@
 '''
 
 # here put the import lib
-from main import main
-from submit import submit
+#from main import main
+#from submit import submit
+from mainMT import main
+from submitMT import submit
 import setproctitle
 import configparser
 import pandas as pd
@@ -21,6 +23,7 @@ if __name__ == '__main__':
     setproctitle.setproctitle("Qidong's Competition")
     config = configparser.ConfigParser()
     config.read('config.ini', encoding='utf-8')
+    config.set('Model', 'multi_task', '1')
 
     res = []
     '''切换种子进行训练和预测'''

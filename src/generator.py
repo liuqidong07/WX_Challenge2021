@@ -104,13 +104,18 @@ class DataGenerator():
     def make_train_loader(self):
         '''获取训练集的loader'''
         if self.multi_task:
-            trainset = OfflineData(torch.tensor(self.train[self.features].values), 
-                                   torch.tensor(self.train[TARGET].values))
+            self.train['label'] = self.train['read_comment'] + self.train['like'] + self.train['click_avatar'] + self.train['forward']
+            train_pos = self.train.loc[self.train['label']>0]
+            train_neg = self.train.loc[self.train['label']==0]
+            train_neg = train_neg.sample(frac=0.4, random_state=self.seed)
+            train_sample = pd.concat([train_neg, train_pos])
+            trainset = OfflineData(torch.tensor(train_sample[self.features].values), 
+                                   torch.tensor(train_sample[TARGET].values))
         else:
             self.train_pos = self.train.loc[self.train[self.target]==1]
             # 取出所有的负样本后进行采样, 然后和正样本集进行拼接
             self.train_neg = self.train.loc[self.train[self.target]==0]
-            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target], random_state=self.seed, weights='stay')
+            self.train_neg = self.train_neg.sample(frac=FRACTION[self.target], random_state=self.seed)
             self.train_sample = pd.concat([self.train_pos, self.train_neg])
             #TODO: 在这里创建向量的时候可以加上device
             trainset = OfflineData(torch.tensor(self.train_sample[self.features].values),

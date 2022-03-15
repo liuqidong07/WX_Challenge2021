@@ -22,26 +22,44 @@ class MMOE(BaseMT):
         super().__init__(config)
         self.task_num = task_num
 
+        # 构建embedding字典
+        input_size = 0
+        self.EMdict = nn.ModuleDict({})
+        for feat in feat_list:
+            if feat.feat_name == 'item_ocr':
+                self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_ocr())
+                self.EMdict[feat.feat_name].requires_grad = False
+            else:
+                self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
+                nn.init.normal_(self.EMdict[feat.feat_name].weight, mean=0.0, std=0.0001)
+            input_size += feat.embedding_dim
+
         self.experts = nn.ModuleList([])
         for _ in range(expert_num):
-            self.experts.append(Expert(feat_list))
+            self.experts.append(Expert(input_size))
 
         self.gates = nn.ModuleList([])
         self.towers = nn.ModuleList([])
         for _ in range(task_num):
-            self.gates.append(Gate(feat_list, expert_num))
-            self.towers.append(Tower(100))
+            self.gates.append(Gate(input_size, expert_num))
+            self.towers.append(Tower(50))
 
 
     def forward(self, x):
 
+        # 获取embedding特征
+        EMlist = []
+        for key in x.keys():
+            EMlist.append(self.EMdict[key](x[key]))
+        em_out = torch.cat(EMlist, dim=1)
+
         expert_out = []
         for expert in self.experts:
-            expert_out.append(expert(x))
+            expert_out.append(expert(em_out))
 
         gate_list = []
         for gate in self.gates:
-            gate_list.append(gate(x))
+            gate_list.append(gate(em_out))
 
         y = []
         for i, gateW in enumerate(gate_list):
@@ -60,20 +78,9 @@ class MMOE(BaseMT):
 
 class Expert(nn.Module):
 
-    def __init__(self, feat_list, layer_list=[100, 100, 100], output=False):
+    def __init__(self, input_size, layer_list=[50, 50], output=False):
         
         super().__init__()
-        # 构建embedding字典
-        input_size = 0
-        self.EMdict = nn.ModuleDict({})
-        for feat in feat_list:
-            if feat.feat_name == 'item_ocr':
-                self.EMdict[feat.feat_name] = nn.Embedding.from_pretrained(load_ocr())
-                self.EMdict[feat.feat_name].requires_grad = False
-            else:
-                self.EMdict[feat.feat_name] = nn.Embedding(feat.vocabulary_size, feat.embedding_dim)
-                nn.init.normal_(self.EMdict[feat.feat_name].weight, mean=0.0, std=0.0001)
-            input_size += feat.embedding_dim
         
         seq_dict = collections.OrderedDict()
         last_unit = input_size  # 记录上一层的单元数, 初始化为输入单元数
@@ -88,39 +95,29 @@ class Expert(nn.Module):
         if output:
             seq_dict['LEO'] = nn.Linear(last_unit, 1)
 
+        seq_dict['LLast'] = nn.Linear(50, 50)
+
         self.expert = nn.Sequential(seq_dict)
 
     def forward(self, x):
 
-        # 获取embedding特征
-        EMlist = []
-        for key in x.keys():
-            EMlist.append(self.EMdict[key](x[key]))
-        em_out = torch.cat(EMlist, dim=1)
-        y = self.expert(em_out)
+        y = self.expert(x)
 
         return y
 
 
 class Gate(nn.Module):
 
-    def __init__(self, feat_list, expert_num):
+    def __init__(self, input_size, expert_num):
 
         super().__init__()
         # 使用embedding来代替线性层
-        self.W = nn.ModuleDict({})
-        for feat in feat_list:
-            self.W[feat.feat_name] = nn.Embedding(feat.vocabulary_size, expert_num)
-            nn.init.normal_(self.W[feat.feat_name].weight, mean=0.0, std=0.0001)
+        self.GateL = nn.Linear(input_size, expert_num)
         self.act = nn.Softmax(dim=1)    # 第0维为batch size
     
     def forward(self, x):
 
-        y = []
-        for key in x.keys():
-            y.append((self.W[key](x[key]))) # shape(bs, expert_num)
-        y = torch.stack(y, dim=-1)  # shape(bs, expert_num, feat_num)
-        y = torch.sum(y, dim=2) # shape(bs, expert_num)
+        y = self.GateL(x)
         y = self.act(y)
 
         return y

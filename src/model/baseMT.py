@@ -22,7 +22,7 @@ from sklearn.metrics import roc_auc_score
 
 
 WEIGHTS = {'read_commet': 0.4, 'like': 0.3, 'click_avatar': 0.2, 'forward': 0.1}
-MultiWeights = [0.3, 0.2, 0.4, 0.2]
+MultiWeights = [1, 1, 1, 1]
 
 
 class BaseMT(nn.Module):
@@ -53,7 +53,7 @@ class BaseMT(nn.Module):
         optim_ = selection.select_optimizer(self.config.get('Train', 'optimizer'))
         schedule_ = selection.select_schedule(self.config.get('Train', 'scheduler'))
         
-        optimizer = optim_(params=model.parameters(), 
+        optimizer = optim_(params=filter(lambda x: x.requires_grad, model.parameters()), 
                            lr=self.config.getfloat('Train', 'lr'),
                            weight_decay=self.config.getfloat('Train', 'l2'))
         if schedule_ is not None:
