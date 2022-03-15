@@ -1,0 +1,9 @@
+setproctitle==1.2.2
+tensorflow==2.5.0
+tqdm==4.59.0
+pandas==1.2.3
+torch==1.8.0+cu111
+numpy==1.19.2
+deepctr_torch==0.2.7
+lightgbm==3.3.2
+scikit_learn==1.0.2
