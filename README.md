@@ -1,4 +1,4 @@
-# [WeChat Big Data Challenge](https://tech.yidianzixun.com/competition/#/) Program Share (178/1614)
+# [WeChat Big Data Challenge](https://algo.weixin.qq.com/) Program Share (Ranking: 178/1614)
 
 Team: 田老师我不会
 
